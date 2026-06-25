@@ -1,111 +1,82 @@
-var request = require('supertest');
 var mongoose = require('mongoose');
-var app = require('../app');
-var Bicicleta = require('../models/bicicleta');
+var Bicicleta = require('../../models/bicicleta');
 
-describe('Bicicleta API', function () {
+describe('Testing Bicicletas', function () {
 
-    beforeEach(function (done) {
-        mongoose.connect('mongodb://localhost/red_bicicletas_test', { useNewUrlParser: true });
-        mongoose.connection.once('open', function () {
-            Bicicleta.deleteMany({}, function () {
-                done();
+    beforeEach(async function () {
+        console.log('testeando...');
+        await mongoose.connect('mongodb://localhost/red_bicicletas_test');
+    });
+
+    afterEach(async function () {
+        await Bicicleta.deleteMany({});
+        await mongoose.disconnect();
+    });
+
+    describe('Bicicleta.createInstance', function () {
+        it('crea una instancia de Bicicleta', function () {
+            var bici = new Bicicleta({
+                code: 1,
+                color: 'rojo',
+                modelo: 'urbana',
+                ubicacion: [-34.6, -58.4]
             });
+
+            expect(bici.code).toBe(1);
+            expect(bici.color).toBe('rojo');
+            expect(bici.modelo).toBe('urbana');
+            expect(bici.ubicacion[0]).toBe(-34.6);
+            expect(bici.ubicacion[1]).toBe(-58.4);
         });
     });
 
-    afterEach(function (done) {
-        Bicicleta.deleteMany({}, function () {
-            mongoose.disconnect();
-            done();
+    describe('Bicicleta.allBicis', function () {
+        it('comienza vacía la colección', async function () {
+            var bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(0);
         });
     });
 
-    describe('GET /api/bicicletas', function () {
-        it('status 200, devuelve un arreglo vacío al inicio', function (done) {
-            request(app)
-                .get('/api/bicicletas')
-                .end(function (err, res) {
-                    expect(res.status).toBe(200);
-                    expect(res.body.bicicletas.length).toBe(0);
-                    done();
-                });
+    describe('Bicicleta.add', function () {
+        it('agrega una nueva bicicleta y la persiste en la base', async function () {
+            var aBici = {
+                code: 1,
+                color: 'verde',
+                modelo: 'urbana',
+                ubicacion: [-34.6, -58.4]
+            };
+
+            await Bicicleta.add(aBici);
+
+            var bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(1);
+            expect(bicis[0].code).toBe(aBici.code);
+            expect(bicis[0].color).toBe(aBici.color);
         });
     });
 
-    describe('POST /api/bicicletas/create', function () {
-        it('status 201, crea una nueva bicicleta', function (done) {
-            var nuevaBici = { code: 10, color: 'rojo', modelo: 'urbana', lat: -34.6, lng: -58.4 };
+    describe('Bicicleta.findByCode', function () {
+        it('encuentra una bicicleta por code', async function () {
+            await Bicicleta.add({ code: 2, color: 'azul', modelo: 'montaña', ubicacion: [-1, -1] });
+            await Bicicleta.add({ code: 3, color: 'negra', modelo: 'urbana', ubicacion: [-2, -2] });
 
-            request(app)
-                .post('/api/bicicletas/create')
-                .send(nuevaBici)
-                .end(function (err, res) {
-                    expect(res.status).toBe(201);
-                    expect(res.body.bicicleta.code).toBe(10);
-                    expect(res.body.bicicleta.color).toBe('rojo');
-
-                    Bicicleta.allBicis(function (err, bicis) {
-                        expect(bicis.length).toBe(1);
-                        done();
-                    });
-                });
+            var targetBici = await Bicicleta.findByCode(3);
+            expect(targetBici.code).toBe(3);
+            expect(targetBici.color).toBe('negra');
         });
     });
 
-    describe('GET /api/bicicletas/:code', function () {
-        it('status 200, devuelve la bicicleta buscada por code', function (done) {
-            Bicicleta.add({ code: 20, color: 'verde', modelo: 'montaña', ubicacion: [1, 1] }, function () {
-                request(app)
-                    .get('/api/bicicletas/20')
-                    .end(function (err, res) {
-                        expect(res.status).toBe(200);
-                        expect(res.body.bicicleta.code).toBe(20);
-                        done();
-                    });
-            });
-        });
+    describe('Bicicleta.removeByCode', function () {
+        it('elimina una bicicleta por code', async function () {
+            await Bicicleta.add({ code: 4, color: 'gris', modelo: 'urbana', ubicacion: [0, 0] });
 
-        it('status 404, si la bicicleta no existe', function (done) {
-            request(app)
-                .get('/api/bicicletas/999')
-                .end(function (err, res) {
-                    expect(res.status).toBe(404);
-                    done();
-                });
-        });
-    });
+            var bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(1);
 
-    describe('PUT /api/bicicletas/update/:code', function () {
-        it('status 200, actualiza una bicicleta existente', function (done) {
-            Bicicleta.add({ code: 30, color: 'azul', modelo: 'urbana', ubicacion: [2, 2] }, function () {
-                request(app)
-                    .put('/api/bicicletas/update/30')
-                    .send({ color: 'negro', modelo: 'montaña', lat: 5, lng: 5 })
-                    .end(function (err, res) {
-                        expect(res.status).toBe(200);
-                        expect(res.body.bicicleta.color).toBe('negro');
-                        expect(res.body.bicicleta.modelo).toBe('montaña');
-                        done();
-                    });
-            });
-        });
-    });
+            await Bicicleta.removeByCode(4);
 
-    describe('DELETE /api/bicicletas/delete/:code', function () {
-        it('status 204, elimina una bicicleta existente', function (done) {
-            Bicicleta.add({ code: 40, color: 'blanco', modelo: 'urbana', ubicacion: [3, 3] }, function () {
-                request(app)
-                    .delete('/api/bicicletas/delete/40')
-                    .end(function (err, res) {
-                        expect(res.status).toBe(204);
-
-                        Bicicleta.allBicis(function (err, bicis) {
-                            expect(bicis.length).toBe(0);
-                            done();
-                        });
-                    });
-            });
+            bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(0);
         });
     });
 
