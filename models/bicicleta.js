@@ -21,20 +21,22 @@ bicicletaSchema.methods.toString = function () {
 
 // ----- Métodos de clase (estáticos) -----
 // Se definen en la propiedad "statics" -> responden el modelo/clase directamente
-bicicletaSchema.statics.add = function (aBici, cb) {
-    return this.create(aBici, cb);
+// Nota: desde Mongoose 7/8, los métodos de consulta ya no aceptan callbacks,
+// por eso estos métodos devuelven directamente la Promesa.
+bicicletaSchema.statics.add = function (aBici) {
+    return this.create(aBici);
 };
 
-bicicletaSchema.statics.allBicis = function (cb) {
-    return this.find({}, cb);
+bicicletaSchema.statics.allBicis = function () {
+    return this.find({});
 };
 
-bicicletaSchema.statics.findByCode = function (aCode, cb) {
-    return this.findOne({ code: aCode }, cb);
+bicicletaSchema.statics.findByCode = function (aCode) {
+    return this.findOne({ code: aCode });
 };
 
-bicicletaSchema.statics.removeByCode = function (aCode, cb) {
-    return this.deleteOne({ code: aCode }, cb);
+bicicletaSchema.statics.removeByCode = function (aCode) {
+    return this.deleteOne({ code: aCode });
 };
 
 module.exports = mongoose.model('Bicicleta', bicicletaSchema);
