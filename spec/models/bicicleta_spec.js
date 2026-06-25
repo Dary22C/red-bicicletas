@@ -3,19 +3,14 @@ var Bicicleta = require('../../models/bicicleta');
 
 describe('Testing Bicicletas', function () {
 
-    beforeEach(function (done) {
+    beforeEach(async function () {
         console.log('testeando...');
-        mongoose.connect('mongodb://localhost/red_bicicletas_test', { useNewUrlParser: true });
-        mongoose.connection.once('open', function () {
-            done();
-        });
+        await mongoose.connect('mongodb://localhost/red_bicicletas_test');
     });
 
-    afterEach(function (done) {
-        Bicicleta.deleteMany({}, function (err) {
-            mongoose.disconnect();
-            done();
-        });
+    afterEach(async function () {
+        await Bicicleta.deleteMany({});
+        await mongoose.disconnect();
     });
 
     describe('Bicicleta.createInstance', function () {
@@ -36,17 +31,14 @@ describe('Testing Bicicletas', function () {
     });
 
     describe('Bicicleta.allBicis', function () {
-        it('comienza vacía la colección', function (done) {
-            Bicicleta.allBicis(function (err, bicis) {
-                expect(err).toBeNull();
-                expect(bicis.length).toBe(0);
-                done();
-            });
+        it('comienza vacía la colección', async function () {
+            var bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(0);
         });
     });
 
     describe('Bicicleta.add', function () {
-        it('agrega una nueva bicicleta y la persiste en la base', function (done) {
+        it('agrega una nueva bicicleta y la persiste en la base', async function () {
             var aBici = {
                 code: 1,
                 color: 'verde',
@@ -54,50 +46,37 @@ describe('Testing Bicicletas', function () {
                 ubicacion: [-34.6, -58.4]
             };
 
-            Bicicleta.add(aBici, function (err, newBici) {
-                expect(err).toBeNull();
+            await Bicicleta.add(aBici);
 
-                Bicicleta.allBicis(function (err, bicis) {
-                    expect(bicis.length).toBe(1);
-                    expect(bicis[0].code).toBe(aBici.code);
-                    expect(bicis[0].color).toBe(aBici.color);
-                    done();
-                });
-            });
+            var bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(1);
+            expect(bicis[0].code).toBe(aBici.code);
+            expect(bicis[0].color).toBe(aBici.color);
         });
     });
 
     describe('Bicicleta.findByCode', function () {
-        it('encuentra una bicicleta por code', function (done) {
-            Bicicleta.add({ code: 2, color: 'azul', modelo: 'montaña', ubicacion: [-1, -1] }, function (err) {
-                Bicicleta.add({ code: 3, color: 'negra', modelo: 'urbana', ubicacion: [-2, -2] }, function (err) {
-                    Bicicleta.findByCode(3, function (err, targetBici) {
-                        expect(err).toBeNull();
-                        expect(targetBici.code).toBe(3);
-                        expect(targetBici.color).toBe('negra');
-                        done();
-                    });
-                });
-            });
+        it('encuentra una bicicleta por code', async function () {
+            await Bicicleta.add({ code: 2, color: 'azul', modelo: 'montaña', ubicacion: [-1, -1] });
+            await Bicicleta.add({ code: 3, color: 'negra', modelo: 'urbana', ubicacion: [-2, -2] });
+
+            var targetBici = await Bicicleta.findByCode(3);
+            expect(targetBici.code).toBe(3);
+            expect(targetBici.color).toBe('negra');
         });
     });
 
     describe('Bicicleta.removeByCode', function () {
-        it('elimina una bicicleta por code', function (done) {
-            Bicicleta.add({ code: 4, color: 'gris', modelo: 'urbana', ubicacion: [0, 0] }, function (err) {
-                Bicicleta.allBicis(function (err, bicis) {
-                    expect(bicis.length).toBe(1);
+        it('elimina una bicicleta por code', async function () {
+            await Bicicleta.add({ code: 4, color: 'gris', modelo: 'urbana', ubicacion: [0, 0] });
 
-                    Bicicleta.removeByCode(4, function (err) {
-                        expect(err).toBeNull();
+            var bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(1);
 
-                        Bicicleta.allBicis(function (err, bicis) {
-                            expect(bicis.length).toBe(0);
-                            done();
-                        });
-                    });
-                });
-            });
+            await Bicicleta.removeByCode(4);
+
+            bicis = await Bicicleta.allBicis();
+            expect(bicis.length).toBe(0);
         });
     });
 
